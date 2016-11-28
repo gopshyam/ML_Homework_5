@@ -15,7 +15,7 @@ BETA = 0.9
 
 EPSILON = 1 #Numerator over 10
 
-CONVERGE_LIMIT = 1000 #Number of unchanged tries
+CONVERGE_LIMIT = 100000 #Number of unchanged tries
 
 unchanged_tries = 0
 

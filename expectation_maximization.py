@@ -13,7 +13,7 @@ def parse_input(filename):
     return values
 
 def gaussian_probability(x, mean, covariance, prior):
-    probability = math.exp((-1/float(covariance)) * ((x - mean)**2)) * prior
+    probability = (1 / math.sqrt(2 * math.pi * covariance)) *  math.exp((-1/float(2.0 * covariance)) * ((x - mean)**2)) * prior
     return probability
 
 def main():
@@ -28,16 +28,20 @@ def main():
 
     #Initialize the values
     prior = [1/float(NUM_CLASSES)] * NUM_CLASSES
-    mean = []
+    mean = list()
     covariance = []
     for i in range(NUM_CLASSES):
-        mean.append(float(random.randrange(int(max(input_values)))))
-        covariance.append(float(random.randrange(int(max(input_values) - min(input_values)))))
+        mean.append(random.uniform(min(input_values), max(input_values)))
+        covariance.append(random.uniform(1, (max(input_values) - min(input_values))/10))
     class_labels = range(NUM_CLASSES)
     is_converged = False
 
+    print mean, covariance, prior
     while not is_converged:
         #initialize the list of points
+        class_point_list = list()
+        for i in range(NUM_CLASSES):
+            class_point_list.append(list())
         is_converged = False
         old_mean = mean[:]
         old_covariance = covariance[:]
@@ -49,25 +53,35 @@ def main():
             prob_list = list()
             for i in range(NUM_CLASSES):
                 prob_list.append(gaussian_probability(point, mean[i], covariance[i], prior[i]))
+            #prob_sum = sum(prob_list)
+            #prob_list = [x/prob_sum for x in prob_list]
+            class_index = prob_list.index(max(prob_list))
+            class_point_list[class_index].append([point, prob_list])
             gaussian_prob_list.append(prob_list)
 
         #Now find the new values of mean and variance
         for i in range(NUM_CLASSES):
             mean_numerator, mean_denominator, prior_numerator, prior_denominator, covariance_numerator, covariance_denominator = 0,0,0,0,0,0
-            for x_j, prob_list in zip(input_values, gaussian_prob_list):
+            for x_j, prob_list in class_point_list[i]:
                 g_p = prob_list[i]
                 mean_numerator += g_p * x_j
                 mean_denominator += x_j
-                prior_numerator += x_j
-                covariance_numerator = g_p * ((x_j - math.sqrt(covariance[i])) ** 2)
-                covariance_denominator = g_p
 
             mean[i] = mean_numerator / float(mean_denominator)
+
+
+            for x_j, prob_list in class_point_list[i]:
+                g_p = prob_list[i]
+                prior_numerator += x_j
+                covariance_numerator += g_p * ((x_j - mean[i]) ** 2)
+                covariance_denominator += g_p
+
             covariance[i] = covariance_numerator / float(covariance_denominator)
-            prior[i] = prior_numerator / float(len(gaussian_prob_list))
+            prior[i] = prior_numerator / float(len(input_values))
 
         print mean, covariance, prior
         if mean == old_mean:
+            print "CONVERGED"
             is_converged = True
 
     print mean, covariance, prior
