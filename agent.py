@@ -15,9 +15,9 @@ BETA = 0.9
 
 EPSILON = 1 #Numerator over 10
 
-CONVERGE_LIMIT = 100000 #Number of unchanged tries
+CONVERGE_LIMIT = 1000 #Number of unchanged iterations
 
-unchanged_tries = 0
+changed_tries = 0
 
 class Agent:
     def initialize(self):
@@ -51,15 +51,23 @@ def choose_action(current_location, gridWorld):
 
     return exploit_action
 
+def optimal_action(current_location, gridWorld):
+    state = gridWorld[current_location[0]][current_location[1]]
+    q_values = state[0]
+    return arg_max(q_values)
+
+
 def update_agent_location(agent, action, gridWorld):
     #Find the agent's current location, use the action to check what the next location is.
     wall = False
+    goal_state = False
     old_location = agent.current_location
     #If agent is at goal state, then update location to start state no matter what the action
     if (gridWorld[old_location[0]][old_location[1]][1] == 1):
         agent.previous_location = agent.current_location
         agent.current_location = START_LOCATION
-        return
+        print "GOAL STATE"
+        return True
     new_location = old_location[:]
     if action == UP:
         new_location[1] += 1
@@ -80,17 +88,14 @@ def update_agent_location(agent, action, gridWorld):
         agent.previous_location = old_location
         return
     
-    #if (gridWorld[new_location[0]][new_location[1]][1] == 1):
-        #Goal state
-    #    agent.current_location = START_LOCATION
-    #    agent.previous_location = new_location
-
     agent.current_location = new_location
     agent.previous_location = old_location
+    return False
+    
 
 
 def update_q_value(agent, action, gridWorld):
-    global unchanged_tries
+    global changed_tries
     current_location = agent.current_location
     previous_location = agent.previous_location
     print current_location, previous_location
@@ -101,16 +106,29 @@ def update_q_value(agent, action, gridWorld):
     reward = gridWorld[pre_x][pre_y][1]
     q_values[action] += ALPHA * (reward + (BETA * max(new_q)) - q_values[action])
     if gridWorld[pre_x][pre_y][0] != q_values[:]:
-        unchanged_tries = 0
-    else: unchanged_tries += 1
+        changed_tries += 1
     gridWorld[pre_x][pre_y][0] = q_values[:]
 
 
 def print_optimal_policy(gridWorld):
     agent = Agent()
+    goal_state = False
+    while (not goal_state):
+        action = optimal_action(agent.current_location, gridWorld)
+        if (action == UP):
+            print 'UP'
+        if (action == DOWN):
+            print "DOWN"
+        if (action == LEFT):
+            print "LEFT"
+        if (action == RIGHT):
+            print "RIGHT"
+        goal_state = update_agent_location(agent, action, gridWorld)
+        update_result = update_q_value(agent, action, gridWorld)
+    
 
 def main():
-    global unchanged_tries
+    global changed_tries
     #Repeat until convergence:
     #pick an action
     #Execute the action and get the resulting location from the world
@@ -119,13 +137,24 @@ def main():
     agent = Agent()
     gridWorld = init()
     is_converged = False
-    while (unchanged_tries < CONVERGE_LIMIT):
-        action = choose_action(agent.current_location, gridWorld)
-        print action
-        update_agent_location(agent, action, gridWorld)
-        update_result = update_q_value(agent, action, gridWorld)
+    num_iterations = 0
+    num_unchanged_iterations = 0
+    while (num_unchanged_iterations < CONVERGE_LIMIT):
+        changed_tries = 0
+        goal_state = False
+        while (not goal_state):
+            action = choose_action(agent.current_location, gridWorld)
+            print action
+            goal_state = update_agent_location(agent, action, gridWorld)
+            update_result = update_q_value(agent, action, gridWorld)
+        if changed_tries == 0:
+            num_unchanged_iterations += 1
+        else: num_unchanged_iterations = 0
+        num_iterations += 1
 
     print gridWorld
+    print "Iterations required for convergence: ", num_iterations - CONVERGE_LIMIT
+    print_optimal_policy(gridWorld)
 
 if __name__ == "__main__":
     main()
