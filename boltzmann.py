@@ -2,7 +2,7 @@
 
 import random
 from gridWorld import init
-import sys
+import math
 
 START_LOCATION = [0,9]
 
@@ -12,14 +12,13 @@ LEFT = 2
 RIGHT = 3
 
 ALPHA = 0.01
-
 BETA = 0.9
 
 EPSILON = 1 #Numerator over 10
-if (len(sys.argv) > 1):
-    EPSILON = sys.argv[1]
 
 CONVERGE_LIMIT = 1000 #Number of unchanged iterations
+
+INIT_TEMP = 1000
 
 changed_tries = 0
 
@@ -41,19 +40,32 @@ def arg_max(l):
             return i
 
 
-def choose_action(current_location, gridWorld):
+def find_probs(q_values, num_iterations):
+    T = max([INIT_TEMP - num_iterations, 1])
+    
+    exp_probs = [math.exp(q/T) for q in q_values]
+
+    exp_sum = sum(exp_probs)
+
+    action_probs = [prob/exp_sum for prob in exp_probs]
+    return action_probs
+
+
+def choose_action(current_location, gridWorld, num_iterations):
     #Given a state, chooses finds the optimal action for exploitation, and depending on the epsilon value, either returns a random number between 0 and 4
     state = gridWorld[current_location[0]][current_location[1]]
     q_values = state[0]
-    exploit_action = arg_max(q_values)
 
-    #Find the probability
-    rand_var = random.randrange(0,10)
-    if (rand_var < EPSILON):
-        #EXPLOIT
-        return random.randrange(0,4)
+    action_probs = find_probs(q_values, num_iterations)
 
-    return exploit_action
+    rand_var = random.uniform(0, 1.0)
+
+    for i in range(len(action_probs)):
+        if rand_var < sum(action_probs[:i+1]):
+            return i
+
+    return len(action_probs) - 1
+
 
 def optimal_action(current_location, gridWorld):
     state = gridWorld[current_location[0]][current_location[1]]
@@ -148,7 +160,7 @@ def main():
         goal_state = False
         print num_iterations
         while (not goal_state):
-            action = choose_action(agent.current_location, gridWorld)
+            action = choose_action(agent.current_location, gridWorld, num_iterations)
             #print action
             goal_state = update_agent_location(agent, action, gridWorld)
             update_result = update_q_value(agent, action, gridWorld)
